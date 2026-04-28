@@ -1,0 +1,265 @@
+// ============================================
+// QueueEase — Prisma Schema
+// ============================================
+// Defines all data models, enums, relations,
+// and indexes for the QueueEase platform.
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// Enums
+// ============================================
+
+/// Roles for role-based access control
+enum Role {
+  USER
+  ADMIN
+  VERIFIER
+}
+
+/// Clinic verification status set by Verifier
+enum ClinicStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Current state of an appointment/token
+enum AppointmentStatus {
+  BOOKED
+  SERVING
+  DONE
+  CANCELLED
+}
+
+/// Payment status for an appointment
+enum PaymentStatus {
+  PENDING
+  PAID
+  NOT_REQUIRED
+}
+
+/// Outcome of a verification visit
+enum VerificationOutcome {
+  APPROVED
+  REJECTED
+}
+
+// ============================================
+// Models
+// ============================================
+
+/// User — represents all three roles:
+/// patients/customers, service-provider admins, and verifiers
+model User {
+  id           String  @id @default(uuid())
+  name         String
+  phone        String  @unique
+  email        String? @unique
+  passwordHash String
+
+  /// Role determines access level (USER / ADMIN / VERIFIER)
+  role Role @default(USER)
+
+  /// Firebase Cloud Messaging token for push notifications
+  fcmToken String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- Relations ---
+
+  /// Clinics owned by this user (only relevant for ADMIN role)
+  clinics Clinic[]
+
+  /// Appointments booked by this user (only relevant for USER role)
+  appointments Appointment[]
+
+  /// Verification logs submitted by this user (only relevant for VERIFIER role)
+  verificationLogs VerificationLog[]
+
+  @@index([phone])
+  @@index([role])
+  @@map("users")
+}
+
+/// Clinic — a service provider location (clinic, barber, LPG agency, etc.)
+/// Registered by an ADMIN and verified by a VERIFIER
+model Clinic {
+  id      String @id @default(uuid())
+  name    String
+  address String
+  city    String
+  state   String
+  pincode String
+
+  /// GPS coordinates for map-based search
+  latitude  Float
+  longitude Float
+
+  // --- Doctor / Provider Details ---
+  doctorName     String
+  degree         String?
+  college        String?
+  experience     Int?
+  specialization String?
+
+  /// Array of Cloudinary URLs for clinic interior/exterior photos
+  clinicImages String[]
+
+  /// Single Cloudinary URL for the doctor/provider's photo
+  doctorPhoto String?
+
+  /// Maximum tokens that can be booked per day
+  maxPatientsPerDay Int @default(30)
+
+  /// Whether this clinic requires payment before booking
+  paymentRequired Boolean @default(false)
+
+  /// The fee to be paid if paymentRequired is true
+  consultationFee Int?
+
+  /// Verification status — set by a Verifier after physical visit
+  status ClinicStatus @default(PENDING)
+
+  // --- Foreign Keys ---
+
+  /// The admin (service provider) who registered this clinic
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- Relations ---
+
+  appointments     Appointment[]
+  queueState       QueueState?
+  verificationLogs VerificationLog[]
+
+  @@index([adminId])
+  @@index([city])
+  @@index([status])
+  @@index([pincode])
+  @@map("clinics")
+}
+
+/// Appointment — a booking made by a USER at a Clinic
+/// Each appointment gets a sequential token number for the day
+model Appointment {
+  id String @id @default(uuid())
+
+  // --- Foreign Keys ---
+
+  /// The user who booked this appointment
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The clinic where the appointment is booked
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // --- Patient Details ---
+  // Stored separately so a user can book for someone else
+
+  patientName    String
+  patientAge     Int
+  patientPhone   String
+  patientEmail   String?
+  patientAddress String?
+
+  /// Date of the appointment (used for daily queue management)
+  appointmentDate DateTime
+
+  /// Sequential token number assigned for the day
+  tokenNumber Int
+
+  /// Current status of this appointment in the queue
+  status AppointmentStatus @default(BOOKED)
+
+  // --- Payment Info ---
+
+  /// Whether payment has been made, is pending, or not required
+  paymentStatus PaymentStatus @default(NOT_REQUIRED)
+
+  /// Razorpay order ID (set when payment is initiated)
+  razorpayOrderId String?
+
+  /// Razorpay payment ID (set when payment is confirmed)
+  razorpayPaymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clinicId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@index([clinicId, appointmentDate])
+  @@map("appointments")
+}
+
+/// QueueState — tracks the live queue position for each clinic per day
+/// One-to-one with Clinic (unique clinicId)
+model QueueState {
+  id String @id @default(uuid())
+
+  // --- Foreign Key (unique = one queue state per clinic) ---
+
+  clinicId String @unique
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// The token number currently being served
+  currentToken Int @default(0)
+
+  /// Total tokens booked for today
+  totalBookedToday Int @default(0)
+
+  /// The date this queue state applies to (reset daily)
+  date DateTime
+
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@map("queue_states")
+}
+
+/// VerificationLog — audit trail of clinic verification visits
+/// Created when a VERIFIER approves or rejects a clinic
+model VerificationLog {
+  id String @id @default(uuid())
+
+  // --- Foreign Keys ---
+
+  /// The clinic being verified
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// The verifier who performed the visit
+  verifierId String
+  verifier   User   @relation(fields: [verifierId], references: [id], onDelete: Cascade)
+
+  /// Outcome of the verification visit
+  status VerificationOutcome
+
+  /// Optional notes from the verifier (reason for rejection, etc.)
+  notes String?
+
+  /// Optional proof photo URL (Cloudinary) taken during the visit
+  proofImageUrl String?
+
+  createdAt DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([verifierId])
+  @@index([status])
+  @@map("verification_logs")
+}
