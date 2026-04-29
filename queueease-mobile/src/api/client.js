@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken, removeToken, removeUserData } from '../utils/storage';
 
 // ─── Base URL ──────────────────────────────────────────────────────────────────
-const BASE_URL = 'http://192.168.1.45:5000/api';
+const BASE_URL = 'https://queueease-ep4f.onrender.com/api';
 
 // ─── Axios instance ────────────────────────────────────────────────────────────
 const apiClient = axios.create({

@@ -4,7 +4,7 @@ import { AuthContext } from './AuthContext';
 
 export const SocketContext = createContext();
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://192.168.1.45:5000';
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'https://queueease-ep4f.onrender.com';
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
