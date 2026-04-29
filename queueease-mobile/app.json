@@ -38,8 +38,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "810f7d84-db1c-43ec-9107-e041441065de"
       }
-    }
+    },
+    "owner": "this_is_ankit"
   }
 }
