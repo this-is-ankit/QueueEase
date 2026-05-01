@@ -674,3 +674,26 @@ Made in India 🇮🇳 · Built with React Native + Node.js · Powered by Socket
 <img src="https://img.shields.io/badge/Powered%20by-Socket.IO-black?style=for-the-badge&logo=socket.io" />
 
 </div>
+
+## 👨‍💻 Author
+
+<div align="center">
+
+**Ankit Kumar**
+
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/this-is-ankit)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](linkedin.com/in/ankit-kumar-9036a0346)
+
+*Built with ☕, late nights, and a love for clean architecture.*
+
+</div>
+
+---
+
+<div align="center">
+
+If you found this project useful, consider giving it a ⭐ — it genuinely helps!
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=100&section=footer" width="100%"/>
+
+</div>
